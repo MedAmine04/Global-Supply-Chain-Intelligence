@@ -1,0 +1,3 @@
+data/raw/*
+data/bronze/
+!data/raw/.gitkeep
