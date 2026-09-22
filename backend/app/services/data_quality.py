@@ -236,6 +236,7 @@ def run_quality_check(db: Session, entity: str, batch_id: str) -> DataQualityRep
             rows_valid=rows_valid,
             rows_rejected=rows_rejected,
             issues=issues,
+            rejected_row_ids=sorted(rejected_row_ids),
         )
     )
     db.commit()

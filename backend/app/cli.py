@@ -16,6 +16,7 @@ from pathlib import Path
 from app.core.database import SessionLocal
 from app.services.data_quality import run_quality_check
 from app.services.ingestion import IngestionResult, ingest_directory, ingest_file
+from app.services.silver_transform import transform_batch_to_silver
 
 
 def _print_result(result: IngestionResult) -> None:
@@ -29,6 +30,20 @@ def _print_result(result: IngestionResult) -> None:
         print(f"    -> {err}")
 
 
+def _print_silver_result(result) -> None:
+    cast_warning = (
+        f" | ATTENTION erreurs_de_cast={result.rows_cast_errors}"
+        if result.rows_cast_errors
+        else ""
+    )
+    print(
+        f"    Silver: considérées={result.rows_considered:<6} "
+        f"ignorées(invalides)={result.rows_skipped_invalid:<6} "
+        f"créées={result.rows_created:<6} mises_à_jour={result.rows_updated:<6}"
+        + cast_warning
+    )
+
+
 def cmd_ingest(args: argparse.Namespace) -> int:
     db = SessionLocal()
     try:
@@ -38,6 +53,10 @@ def cmd_ingest(args: argparse.Namespace) -> int:
             report = run_quality_check(db, args.entity, result.batch_id)
             print()
             print(report.print_summary())
+            if not args.skip_silver:
+                silver_result = transform_batch_to_silver(db, args.entity, result.batch_id)
+                print()
+                _print_silver_result(silver_result)
         return 0 if result.success else 1
     finally:
         db.close()
@@ -56,6 +75,10 @@ def cmd_ingest_all(args: argparse.Namespace) -> int:
                 report = run_quality_check(db, result.entity, result.batch_id)
                 print()
                 print(report.print_summary())
+                if not args.skip_silver:
+                    silver_result = transform_batch_to_silver(db, result.entity, result.batch_id)
+                    print()
+                    _print_silver_result(silver_result)
                 print()
         return 0 if all(r.success for r in results) else 1
     finally:
@@ -72,6 +95,17 @@ def cmd_quality_check(args: argparse.Namespace) -> int:
         db.close()
 
 
+def cmd_transform_silver(args: argparse.Namespace) -> int:
+    db = SessionLocal()
+    try:
+        result = transform_batch_to_silver(db, args.entity, args.batch)
+        print(f"Silver transform — {result.entity} / batch {result.batch_id}")
+        _print_silver_result(result)
+        return 0
+    finally:
+        db.close()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="app.cli")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -82,6 +116,7 @@ def main() -> int:
     ])
     p_ingest.add_argument("--file", required=True)
     p_ingest.add_argument("--skip-quality-check", action="store_true")
+    p_ingest.add_argument("--skip-silver", action="store_true")
     p_ingest.set_defaults(func=cmd_ingest)
 
     p_all = subparsers.add_parser(
@@ -89,6 +124,7 @@ def main() -> int:
     )
     p_all.add_argument("--dir", default="data/raw")
     p_all.add_argument("--skip-quality-check", action="store_true")
+    p_all.add_argument("--skip-silver", action="store_true")
     p_all.set_defaults(func=cmd_ingest_all)
 
     p_quality = subparsers.add_parser(
@@ -99,6 +135,15 @@ def main() -> int:
     ])
     p_quality.add_argument("--batch", required=True, help="batch_id retourné par l'ingestion")
     p_quality.set_defaults(func=cmd_quality_check)
+
+    p_silver = subparsers.add_parser(
+        "transform-silver", help="Rejoue la transformation Silver sur un batch déjà contrôlé"
+    )
+    p_silver.add_argument("--entity", required=True, choices=[
+        "suppliers", "products", "warehouses", "orders", "shipments", "incidents"
+    ])
+    p_silver.add_argument("--batch", required=True)
+    p_silver.set_defaults(func=cmd_transform_silver)
 
     args = parser.parse_args()
     return args.func(args)

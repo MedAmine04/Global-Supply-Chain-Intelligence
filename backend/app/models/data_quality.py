@@ -33,3 +33,8 @@ class DataQualityReport(Base):
     # "duplicate_ids": n, "invalid_numeric_fields": {...}, "invalid_dates": {...},
     # "invalid_foreign_keys": {...}}
     issues: Mapped[dict] = mapped_column(JSON, nullable=False)
+
+    # IDs (colonne "id" Bronze, pas l'identifiant métier) des lignes rejetées
+    # par ce run — nécessaire à FR-03 (Silver) pour savoir précisément quelles
+    # lignes du batch reprendre. Cf. ADR-004.
+    rejected_row_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
