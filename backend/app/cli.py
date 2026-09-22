@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 from app.core.database import SessionLocal
+from app.services.data_quality import run_quality_check
 from app.services.ingestion import IngestionResult, ingest_directory, ingest_file
 
 
@@ -33,6 +34,10 @@ def cmd_ingest(args: argparse.Namespace) -> int:
     try:
         result = ingest_file(db, args.entity, Path(args.file))
         _print_result(result)
+        if result.success and not args.skip_quality_check:
+            report = run_quality_check(db, args.entity, result.batch_id)
+            print()
+            print(report.print_summary())
         return 0 if result.success else 1
     finally:
         db.close()
@@ -47,7 +52,22 @@ def cmd_ingest_all(args: argparse.Namespace) -> int:
             return 1
         for result in results:
             _print_result(result)
+            if result.success and not args.skip_quality_check:
+                report = run_quality_check(db, result.entity, result.batch_id)
+                print()
+                print(report.print_summary())
+                print()
         return 0 if all(r.success for r in results) else 1
+    finally:
+        db.close()
+
+
+def cmd_quality_check(args: argparse.Namespace) -> int:
+    db = SessionLocal()
+    try:
+        report = run_quality_check(db, args.entity, args.batch)
+        print(report.print_summary())
+        return 0
     finally:
         db.close()
 
@@ -61,13 +81,24 @@ def main() -> int:
         "suppliers", "products", "warehouses", "orders", "shipments", "incidents"
     ])
     p_ingest.add_argument("--file", required=True)
+    p_ingest.add_argument("--skip-quality-check", action="store_true")
     p_ingest.set_defaults(func=cmd_ingest)
 
     p_all = subparsers.add_parser(
         "ingest-all", help="Ingère tous les fichiers reconnus d'un dossier"
     )
     p_all.add_argument("--dir", default="data/raw")
+    p_all.add_argument("--skip-quality-check", action="store_true")
     p_all.set_defaults(func=cmd_ingest_all)
+
+    p_quality = subparsers.add_parser(
+        "quality-check", help="Rejoue un contrôle qualité sur un batch déjà ingéré"
+    )
+    p_quality.add_argument("--entity", required=True, choices=[
+        "suppliers", "products", "warehouses", "orders", "shipments", "incidents"
+    ])
+    p_quality.add_argument("--batch", required=True, help="batch_id retourné par l'ingestion")
+    p_quality.set_defaults(func=cmd_quality_check)
 
     args = parser.parse_args()
     return args.func(args)
