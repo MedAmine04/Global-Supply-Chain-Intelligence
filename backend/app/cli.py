@@ -15,6 +15,7 @@ from pathlib import Path
 
 from app.core.database import SessionLocal
 from app.services.data_quality import run_quality_check
+from app.services.gold_transform import transform_gold
 from app.services.ingestion import IngestionResult, ingest_directory, ingest_file
 from app.services.silver_transform import transform_batch_to_silver
 
@@ -106,6 +107,16 @@ def cmd_transform_silver(args: argparse.Namespace) -> int:
         db.close()
 
 
+def cmd_transform_gold(args: argparse.Namespace) -> int:  # noqa: ARG001 - signature uniforme du CLI
+    db = SessionLocal()
+    try:
+        result = transform_gold(db)
+        print(result.print_summary())
+        return 0
+    finally:
+        db.close()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="app.cli")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -144,6 +155,12 @@ def main() -> int:
     ])
     p_silver.add_argument("--batch", required=True)
     p_silver.set_defaults(func=cmd_transform_silver)
+
+    p_gold = subparsers.add_parser(
+        "transform-gold",
+        help="Reconstruit les tables Gold (dimensions + faits) depuis l'état courant de Silver",
+    )
+    p_gold.set_defaults(func=cmd_transform_gold)
 
     args = parser.parse_args()
     return args.func(args)
