@@ -1,36 +1,16 @@
-import { useEffect, useState } from "react";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+import OverviewSection from "./components/OverviewSection";
+import SupplierPerformanceSection from "./components/SupplierPerformanceSection";
 
 export default function App() {
-  const [health, setHealth] = useState(null);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    fetch(`${API_URL}/health`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then(setHealth)
-      .catch((err) => setError(err.message));
-  }, []);
-
   return (
-    <main style={{ fontFamily: "sans-serif", padding: "2rem" }}>
+    <main style={{ fontFamily: "sans-serif", padding: "2rem", maxWidth: 1000, margin: "0 auto" }}>
       <h1>Global Supply Chain Intelligence</h1>
-      <p>Phase 0 — Foundation</p>
+      <p style={{ color: "#666" }}>Phase 1 — Data Platform (FR-06 à FR-08)</p>
 
-      <section>
-        <h2>Statut backend</h2>
-        {error && <p style={{ color: "crimson" }}>Erreur : {error}</p>}
-        {!error && !health && <p>Connexion à l'API en cours…</p>}
-        {health && (
-          <pre style={{ background: "#f4f4f4", padding: "1rem" }}>
-            {JSON.stringify(health, null, 2)}
-          </pre>
-        )}
-      </section>
+      <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+        <OverviewSection />
+        <SupplierPerformanceSection />
+      </div>
     </main>
   );
 }
