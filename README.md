@@ -122,6 +122,26 @@ Ce qui est livré : pipeline Bronze → Silver → Gold complet et audité
 branchées sur des données réelles (FR-07 à FR-09). Voir
 `docs/planning-semestre.md` pour la suite (Phase 2 — Big Data).
 
+## Phase 2 — Big Data : Spark (premier incrément)
+
+```bash
+python -m app.cli transform-shipments-spark
+```
+
+Réimplémente la transformation `fact_shipments` (jointures + calcul de
+`is_delayed`/`delay_days`) avec l'API DataFrame de Spark, en local
+(`local[*]`, pas de cluster). Périmètre volontairement limité — pas de
+connecteur JDBC PostgreSQL (aucun dépôt Maven accessible dans cet
+environnement), extraction/écriture toujours via SQLAlchemy, Spark
+utilisé pour le calcul uniquement. Voir ADR-006 pour la justification
+complète et les compromis assumés.
+
+La version Spark est testée par comparaison stricte à la version ORM de
+référence sur le même scénario (`test_spark_transform_matches_orm_transform_on_same_scenario`) :
+mêmes clés de substitution résolues, mêmes mesures dérivées. Un run réel
+sur le dataset synthétique confirme l'équivalence (1751 créées, 139
+ignorées — identique aux deux implémentations).
+
 ## Structure du repo
 
 ```text

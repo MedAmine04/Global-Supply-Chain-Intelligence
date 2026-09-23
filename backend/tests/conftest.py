@@ -28,6 +28,18 @@ def load_to_silver(db, entity: str, rows: list[dict]) -> None:
     path.unlink()
 
 
+@pytest.fixture(scope="session")
+def spark_session():
+    """SparkSession partagée pour toute la suite de tests : la démarrer
+    coûte 2-3 secondes, la recréer par test ralentirait inutilement toute
+    la suite."""
+    from app.services.spark_transform import get_spark
+
+    session = get_spark()
+    yield session
+    session.stop()
+
+
 @pytest.fixture(autouse=True)
 def clean_all_tables():
     from app.models.bronze import BRONZE_MODELS

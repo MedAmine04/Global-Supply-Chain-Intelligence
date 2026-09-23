@@ -18,6 +18,7 @@ from app.services.data_quality import run_quality_check
 from app.services.gold_transform import transform_gold
 from app.services.ingestion import IngestionResult, ingest_directory, ingest_file
 from app.services.silver_transform import transform_batch_to_silver
+from app.services.spark_transform import transform_fact_shipments_spark
 
 
 def _print_result(result: IngestionResult) -> None:
@@ -117,6 +118,20 @@ def cmd_transform_gold(args: argparse.Namespace) -> int:  # noqa: ARG001 - signa
         db.close()
 
 
+def cmd_transform_shipments_spark(args: argparse.Namespace) -> int:  # noqa: ARG001
+    db = SessionLocal()
+    try:
+        result = transform_fact_shipments_spark(db)
+        print(
+            f"Spark fact_shipments: considérées={result.rows_considered} "
+            f"ignorées={result.rows_skipped_invalid} créées={result.rows_created} "
+            f"mises_à_jour={result.rows_updated}"
+        )
+        return 0
+    finally:
+        db.close()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="app.cli")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -161,6 +176,12 @@ def main() -> int:
         help="Reconstruit les tables Gold (dimensions + faits) depuis l'état courant de Silver",
     )
     p_gold.set_defaults(func=cmd_transform_gold)
+
+    p_gold_spark = subparsers.add_parser(
+        "transform-shipments-spark",
+        help="Réimplémentation Spark de la transformation fact_shipments (Phase 2)",
+    )
+    p_gold_spark.set_defaults(func=cmd_transform_shipments_spark)
 
     args = parser.parse_args()
     return args.func(args)
