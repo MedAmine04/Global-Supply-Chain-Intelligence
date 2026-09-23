@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     project_name: str = "Global Supply Chain Intelligence"
     api_version: str = "0.1.0"
 
+    kafka_bootstrap_servers: str = "localhost:9092"
+    kafka_shipment_status_topic: str = "shipment_status_updated"
+
 
 @lru_cache
 def get_settings() -> Settings:

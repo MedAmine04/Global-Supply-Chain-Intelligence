@@ -9,6 +9,7 @@ python-dotenv==1.0.1
 pandas==2.2.3
 Faker==30.3.0
 pyspark==3.5.3
+confluent-kafka==2.6.0
 
 # Dev / tests
 pytest==8.3.3

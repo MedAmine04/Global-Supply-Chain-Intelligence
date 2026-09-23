@@ -5,7 +5,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import get_settings
 from app.core.database import Base
-from app.models import bronze, data_quality, gold, silver  # noqa: F401
+from app.models import bronze, data_quality, events, gold, silver  # noqa: F401
 
 config = context.config
 settings = get_settings()

@@ -132,6 +132,22 @@ def cmd_transform_shipments_spark(args: argparse.Namespace) -> int:  # noqa: ARG
         db.close()
 
 
+def cmd_kafka_produce(args: argparse.Namespace) -> int:
+    from app.services.kafka_producer import publish_shipment_status_updated
+
+    event = publish_shipment_status_updated(args.shipment, args.previous_status, args.status)
+    print(f"Événement publié: {event.event_id} ({args.shipment} -> {args.status})")
+    return 0
+
+
+def cmd_kafka_consume(args: argparse.Namespace) -> int:
+    from app.services.kafka_consumer import run_consumer_loop
+
+    count = run_consumer_loop(SessionLocal, max_messages=args.max_messages, timeout=args.timeout)
+    print(f"{count} événement(s) traité(s)")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="app.cli")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -182,6 +198,23 @@ def main() -> int:
         help="Réimplémentation Spark de la transformation fact_shipments (Phase 2)",
     )
     p_gold_spark.set_defaults(func=cmd_transform_shipments_spark)
+
+    p_kproduce = subparsers.add_parser(
+        "kafka-produce-status",
+        help="Publie un événement shipment_status_updated (nécessite un broker Kafka accessible)",
+    )
+    p_kproduce.add_argument("--shipment", required=True)
+    p_kproduce.add_argument("--status", required=True)
+    p_kproduce.add_argument("--previous-status", default=None)
+    p_kproduce.set_defaults(func=cmd_kafka_produce)
+
+    p_kconsume = subparsers.add_parser(
+        "kafka-consume-status",
+        help="Consomme les événements shipment_status_updated (broker Kafka requis)",
+    )
+    p_kconsume.add_argument("--max-messages", type=int, default=None)
+    p_kconsume.add_argument("--timeout", type=float, default=5.0)
+    p_kconsume.set_defaults(func=cmd_kafka_consume)
 
     args = parser.parse_args()
     return args.func(args)

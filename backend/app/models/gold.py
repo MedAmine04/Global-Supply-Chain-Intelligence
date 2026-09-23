@@ -141,6 +141,11 @@ class FactShipment(GoldLoadMixin, Base):
     is_delayed: Mapped[bool | None] = mapped_column(Boolean)
     delay_days: Mapped[int | None] = mapped_column(Integer)
 
+    # Statut courant de l'expédition, mis à jour en temps quasi réel par
+    # le consumer Kafka (Phase 2) — distinct de is_delayed/delay_days qui
+    # restent calculés par le run Gold complet à partir des dates.
+    status: Mapped[str | None] = mapped_column(String(50))
+
 
 class FactIncident(GoldLoadMixin, Base):
     __tablename__ = "fact_incidents"

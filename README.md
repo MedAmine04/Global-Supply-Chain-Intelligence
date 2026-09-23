@@ -142,6 +142,32 @@ mêmes clés de substitution résolues, mêmes mesures dérivées. Un run réel
 sur le dataset synthétique confirme l'équivalence (1751 créées, 139
 ignorées — identique aux deux implémentations).
 
+## Phase 2 — Big Data : Kafka (deuxième incrément)
+
+```bash
+docker compose up -d kafka   # nécessite Docker (non disponible dans l'environnement de développement)
+python -m app.cli kafka-produce-status --shipment SHP-000001 --status delayed_customs
+python -m app.cli kafka-consume-status --max-messages 1
+```
+
+Producer/consumer pour l'événement `shipment_status_updated`, partitionné
+par `shipment_id` (ordre garanti par expédition), consumer idempotent via
+une table `processed_events` (un `event_id` déjà traité n'est jamais
+réappliqué — sémantique "at-least-once" de Kafka gérée explicitement).
+
+**Contrainte d'environnement assumée et documentée (ADR-007)** : aucun
+broker Kafka n'a pu être installé ni exécuté dans le sandbox de
+développement (pas de Docker, pas de paquet apt pour le broker, aucun
+miroir Apache accessible). La logique métier idempotente
+(`apply_shipment_status_event`) est testée réellement (4 tests, dont le
+test de rejeu du même événement) ; la boucle de consommation Kafka elle
+-même (`run_consumer_loop`) ne l'est pas, faute de broker — à vérifier
+avec `docker compose up kafka` sur une machine équipée de Docker.
+Un vrai bug a été trouvé et corrigé pendant ce travail : `flush()` de
+confluent-kafka ne lève pas d'exception en cas d'échec de livraison,
+ce qui aurait fait "réussir" silencieusement une publication vers un
+broker injoignable — voir ADR-007 pour le détail.
+
 ## Structure du repo
 
 ```text
