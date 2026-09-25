@@ -168,6 +168,36 @@ confluent-kafka ne lève pas d'exception en cas d'échec de livraison,
 ce qui aurait fait "réussir" silencieusement une publication vers un
 broker injoignable — voir ADR-007 pour le détail.
 
+## Phase 2 — Big Data : Airflow (troisième incrément, clôture Phase 2)
+
+```bash
+cd airflow
+export AIRFLOW_HOME=$(pwd)
+export AIRFLOW__DATABASE__SQL_ALCHEMY_CONN="postgresql+psycopg2://gsci:gsci@localhost:5432/airflow_metadata"
+.venv/bin/airflow dags test gsci_bronze_silver_gold 2024-01-01
+```
+
+DAG `gsci_bronze_silver_gold` (voir `airflow/dags/gsci_pipeline_dag.py`)
+remplaçant l'orchestration CLI manuelle : 6 tâches d'ingestion (une par
+entité, dépendances reflétant les contraintes FK réelles : orders après
+suppliers/products/warehouses, shipments après orders, incidents après
+shipments) puis `transform_gold`.
+
+**Contrairement à Kafka, ce composant a pu être vérifié par une vraie
+exécution** (pip + venv, pas besoin de Docker) — voir ADR-008 pour le
+détail complet, incluant :
+- un run de succès complet (7/7 tâches, données Gold identiques au CLI
+  direct) ;
+- un run d'échec contrôlé (fichier source absent) démontrant le retry
+  automatique puis le blocage correct des tâches en aval
+  (`upstream_failed`) sans affecter les tâches indépendantes.
+
+Environnement Python séparé du backend (`airflow/.venv`, voir
+`airflow/README.md`) pour éviter tout conflit de dépendances avec
+FastAPI — le DAG appelle le CLI du backend en sous-processus
+(`BashOperator`), jamais par import direct (révision assumée du plan
+initial d'ADR-002, justifiée dans ADR-008).
+
 ## Structure du repo
 
 ```text

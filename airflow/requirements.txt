@@ -1,0 +1,14 @@
+# Environnement Python séparé de backend/requirements.txt (cf. ADR-008) :
+# Airflow épingle des versions de dépendances (SQLAlchemy, Flask...) qui
+# entreraient en conflit avec celles de FastAPI si installées dans le
+# même environnement.
+#
+# Installation (utilise le fichier de contraintes officiel Airflow,
+# nécessaire pour une résolution de dépendances fiable) :
+#   python3 -m venv airflow/.venv
+#   airflow/.venv/bin/pip install "apache-airflow[postgres]==2.10.3" \
+#     --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.10.3/constraints-3.12.txt"
+#   airflow/.venv/bin/pip install pytest
+
+apache-airflow[postgres]==2.10.3
+pytest==8.3.3
