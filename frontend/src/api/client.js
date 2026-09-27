@@ -13,4 +13,5 @@ export const api = {
   overviewKPIs: () => getJSON("/api/kpis/overview"),
   supplierPerformance: () => getJSON("/api/suppliers/performance"),
   regionTransportBreakdown: () => getJSON("/api/analysis/region-transport"),
+  atRiskShipments: (limit = 10) => getJSON(`/api/predictions/at-risk?limit=${limit}`),
 };
