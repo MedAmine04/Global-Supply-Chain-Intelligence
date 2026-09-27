@@ -117,7 +117,33 @@ def generate_orders(
     return rows
 
 
-def generate_shipments(orders: list[dict]) -> list[dict]:
+def _supplier_reliability_lookup(suppliers: list[dict]) -> dict[str, float]:
+    """Convertit reliability_score (str, potentiellement sale à cause de
+    _maybe_dirty) en float, avec une valeur par défaut neutre pour les
+    entrées sales — ces dernières ne doivent pas casser la génération,
+    seulement rester détectables par FR-02 en aval."""
+    lookup = {}
+    for s in suppliers:
+        try:
+            lookup[s["supplier_id"]] = float(s["reliability_score"])
+        except (TypeError, ValueError):
+            lookup[s["supplier_id"]] = 0.7
+    return lookup
+
+
+def generate_shipments(orders: list[dict], supplier_reliability: dict[str, float]) -> list[dict]:
+    """Génère les expéditions avec un risque de retard qui dépend
+    réellement de la fiabilité du fournisseur, du mode de transport et
+    de la distance — pas un taux fixe indépendant de tout.
+
+    Sans ce lien causal, aucun modèle ne peut apprendre quoi que ce
+    soit d'utile sur ce dataset (un taux de retard purement aléatoire
+    et indépendant des features donne un ROC-AUC ~0.5 par construction,
+    peu importe la qualité du feature engineering ou du modèle — vérifié
+    concrètement lors du premier entraînement, cf. ADR-009). Les
+    coefficients ci-dessous sont un choix arbitraire mais documenté,
+    pas ajustés a posteriori pour obtenir un bon score.
+    """
     rows = []
     for idx, order in enumerate(orders, start=1):
         if order["status"] not in ("shipped", "delivered"):
@@ -127,7 +153,20 @@ def generate_shipments(orders: list[dict]) -> list[dict]:
         )
         transit_days = random.randint(2, 30)
         expected = ship_date + timedelta(days=transit_days)
-        is_late = random.random() < 0.22
+        distance_km = random.randint(50, 15000)
+        transport_mode = random.choice(TRANSPORT_MODES)
+
+        reliability = supplier_reliability.get(order["supplier_id"], 0.7)
+        transport_risk = {"air": -0.05, "rail": 0.02, "road": 0.03, "sea": 0.08}[transport_mode]
+        delay_probability = (
+            0.10
+            + (1 - reliability) * 0.40
+            + transport_risk
+            + (distance_km / 15000) * 0.15
+        )
+        delay_probability = min(max(delay_probability, 0.02), 0.85)
+
+        is_late = random.random() < delay_probability
         actual = (
             expected + timedelta(days=random.randint(1, 10))
             if is_late
@@ -138,7 +177,7 @@ def generate_shipments(orders: list[dict]) -> list[dict]:
                 "shipment_id": f"SHP-{idx:07d}",
                 "order_id": order["order_id"],
                 "warehouse_id": order["warehouse_id"],
-                "transport_mode": random.choice(TRANSPORT_MODES),
+                "transport_mode": transport_mode,
                 "origin": fake.city(),
                 "destination": fake.city(),
                 "ship_date": ship_date.date().isoformat(),
@@ -146,7 +185,7 @@ def generate_shipments(orders: list[dict]) -> list[dict]:
                 "actual_delivery_date": actual.date().isoformat()
                 if order["status"] == "delivered"
                 else None,
-                "distance_km": _maybe_dirty(str(random.randint(50, 15000))),
+                "distance_km": _maybe_dirty(str(distance_km)),
             }
         )
     return rows
@@ -201,7 +240,7 @@ def main() -> None:
         [p["product_id"] for p in products],
         [w["warehouse_id"] for w in warehouses],
     )
-    shipments = generate_shipments(orders)
+    shipments = generate_shipments(orders, _supplier_reliability_lookup(suppliers))
     incidents = generate_incidents(shipments, cfg["incident_rate"])
 
     write_csv(suppliers, out_dir / "suppliers.csv")

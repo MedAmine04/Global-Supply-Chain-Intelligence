@@ -9,7 +9,14 @@ pourcentage, aucun arrondi, aucune règle métier ici — c'est le rôle de
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
-from app.models.gold import DimSupplier, DimWarehouse, FactIncident, FactOrder, FactShipment
+from app.models.gold import (
+    DimSupplier,
+    DimTransport,
+    DimWarehouse,
+    FactIncident,
+    FactOrder,
+    FactShipment,
+)
 
 
 def count_orders(db: Session) -> int:
@@ -81,8 +88,6 @@ def supplier_performance(db: Session) -> list[tuple]:
 def region_transport_breakdown(db: Session) -> list[tuple]:
     """Une ligne par (région, mode de transport) : (region, transport_mode,
     total_shipments, delayed_shipments)."""
-    from app.models.gold import DimTransport
-
     return (
         db.query(
             DimWarehouse.region,
@@ -93,5 +98,31 @@ def region_transport_breakdown(db: Session) -> list[tuple]:
         .join(DimWarehouse, DimWarehouse.warehouse_sk == FactShipment.warehouse_sk)
         .join(DimTransport, DimTransport.transport_sk == FactShipment.transport_sk)
         .group_by(DimWarehouse.region, DimTransport.transport_mode)
+        .all()
+    )
+
+
+def at_risk_shipments(db: Session, limit: int = 20) -> list[tuple]:
+    """Une ligne par expédition à risque, triée par probabilité de retard
+    décroissante : (shipment_id, supplier_name, warehouse_name,
+    transport_mode, probability, predicted_label, model_name)."""
+    from app.models.predictions import ShipmentDelayPrediction
+
+    return (
+        db.query(
+            ShipmentDelayPrediction.shipment_id,
+            DimSupplier.name,
+            DimWarehouse.name,
+            DimTransport.transport_mode,
+            ShipmentDelayPrediction.probability,
+            ShipmentDelayPrediction.predicted_label,
+            ShipmentDelayPrediction.model_name,
+        )
+        .join(FactShipment, FactShipment.shipment_id == ShipmentDelayPrediction.shipment_id)
+        .join(DimSupplier, DimSupplier.supplier_sk == FactShipment.supplier_sk)
+        .join(DimWarehouse, DimWarehouse.warehouse_sk == FactShipment.warehouse_sk)
+        .join(DimTransport, DimTransport.transport_sk == FactShipment.transport_sk)
+        .order_by(ShipmentDelayPrediction.probability.desc())
+        .limit(limit)
         .all()
     )

@@ -216,6 +216,36 @@ docs/
 .github/workflows/  # CI/CD
 ```
 
+
+## Phase 3 — Machine Learning : prédiction de retard (FR-11, FR-12, FR-13)
+
+```bash
+cd backend
+python -m app.cli train-model     # entraîne et compare 3 modèles, suivi MLflow local
+python -m app.cli predict-risk    # score les expéditions non livrées
+# puis : GET /api/predictions/at-risk?limit=20
+```
+
+Compare Logistic Regression, Random Forest et XGBoost sur un **split
+temporel** (les 80% d'expéditions les plus anciennes pour l'entraînement,
+les 20% les plus récentes pour le test), avec suivi des expériences via
+MLflow en mode fichier local (`backend/mlruns/`, pas de serveur requis).
+
+**Garde-fous anti-leakage, testés** : aucune feature n'utilise une
+information postérieure au départ de l'expédition (le taux de retard
+historique d'un fournisseur n'inclut jamais l'expédition courante ni
+les suivantes), et la valeur de repli du cold start est calculée sur le
+seul jeu d'entraînement.
+
+**Résultats (ROC-AUC 0.57 pour le meilleur modèle) volontairement
+modestes et assumés** : le dataset synthétique contient un signal réel
+mais modéré. Le premier entraînement avait donné ROC-AUC ~0.49 (aucun
+signal, générateur de retards purement aléatoire), ce qui a conduit à
+corriger le générateur — voir ADR-009 pour le parcours complet, les
+trois bugs rencontrés, et ce que ces chiffres valident (le pipeline
+retrouve un signal injecté) et ne valident pas (la performance sur des
+retards réels).
+
 ## Documentation
 
 - Cahier des charges fonctionnel V1 : `docs/cahier-des-charges-v1.md`

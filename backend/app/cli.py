@@ -148,6 +148,44 @@ def cmd_kafka_consume(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_train_model(args: argparse.Namespace) -> int:  # noqa: ARG001
+    from app.ml.train import train_and_compare_models
+
+    db = SessionLocal()
+    try:
+        result = train_and_compare_models(db)
+        print(f"Meilleur modèle : {result.best_model_name}\n")
+        for name, m in result.metrics_by_model.items():
+            print(
+                f"{name:<20} precision={m.precision:<7} recall={m.recall:<7} "
+                f"f1={m.f1:<7} roc_auc={m.roc_auc:<7} "
+                f"(train={m.train_size}, test={m.test_size})"
+            )
+        print(f"\nModèle sauvegardé : {result.model_path}")
+        return 0
+    finally:
+        db.close()
+
+
+def cmd_predict_risk(args: argparse.Namespace) -> int:  # noqa: ARG001
+    from app.services.ml_predict import ModelNotTrainedError, predict_at_risk_shipments
+
+    db = SessionLocal()
+    try:
+        try:
+            result = predict_at_risk_shipments(db)
+        except ModelNotTrainedError as exc:
+            print(f"Erreur: {exc}")
+            return 1
+        print(
+            f"{result.shipments_scored} expédition(s) scorée(s), "
+            f"{result.high_risk_count} à risque élevé (probabilité >= 0.5)"
+        )
+        return 0
+    finally:
+        db.close()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="app.cli")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -215,6 +253,16 @@ def main() -> int:
     p_kconsume.add_argument("--max-messages", type=int, default=None)
     p_kconsume.add_argument("--timeout", type=float, default=5.0)
     p_kconsume.set_defaults(func=cmd_kafka_consume)
+
+    p_train = subparsers.add_parser(
+        "train-model", help="Entraîne et compare les modèles de prédiction de retard (FR-11)"
+    )
+    p_train.set_defaults(func=cmd_train_model)
+
+    p_predict = subparsers.add_parser(
+        "predict-risk", help="Score les expéditions en cours avec le modèle entraîné (FR-13)"
+    )
+    p_predict.set_defaults(func=cmd_predict_risk)
 
     args = parser.parse_args()
     return args.func(args)

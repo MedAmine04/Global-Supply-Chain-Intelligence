@@ -1,3 +1,6 @@
 data/raw/*
 data/bronze/
 !data/raw/.gitkeep
+models/*.joblib
+models/model_metadata.json
+mlruns/

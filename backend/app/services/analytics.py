@@ -9,7 +9,12 @@ repository (cf. app/repositories/README.md).
 from sqlalchemy.orm import Session
 
 from app.repositories import analytics as repo
-from app.schemas.analytics import OverviewKPIs, RegionTransportBreakdown, SupplierPerformance
+from app.schemas.analytics import (
+    AtRiskShipment,
+    OverviewKPIs,
+    RegionTransportBreakdown,
+    SupplierPerformance,
+)
 
 
 def _rate(numerator: int, denominator: int) -> float:
@@ -67,3 +72,22 @@ def get_region_transport_breakdown(db: Session) -> list[RegionTransportBreakdown
         for region, transport_mode, total, delayed in rows
     ]
     return sorted(results, key=lambda r: r.delay_rate, reverse=True)
+
+
+def get_at_risk_shipments(db: Session, limit: int = 20) -> list[AtRiskShipment]:
+    rows = repo.at_risk_shipments(db, limit=limit)
+    return [
+        AtRiskShipment(
+            shipment_id=shipment_id,
+            supplier_name=supplier_name,
+            warehouse_name=warehouse_name,
+            transport_mode=transport_mode,
+            probability=probability,
+            predicted_label=predicted_label,
+            model_name=model_name,
+        )
+        for (
+            shipment_id, supplier_name, warehouse_name, transport_mode,
+            probability, predicted_label, model_name,
+        ) in rows
+    ]

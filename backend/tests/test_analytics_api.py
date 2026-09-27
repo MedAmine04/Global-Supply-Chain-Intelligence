@@ -64,3 +64,24 @@ def test_region_transport_breakdown_reflects_scenario(full_supply_chain_scenario
     assert body[0]["transport_mode"] == "air"
     assert body[0]["total_shipments"] == 1
     assert body[0]["delayed_shipments"] == 1
+
+
+def test_at_risk_predictions_endpoint_returns_scored_shipments(
+    full_supply_chain_scenario, dummy_model
+):
+    from app.services.ml_predict import predict_at_risk_shipments
+
+    _run_gold()
+
+    # Le scénario partagé (SHP-001) est déjà livré, donc jamais scoré ;
+    # ce test porte sur le câblage API -> service -> repository, pas sur
+    # la présence de résultats (déjà couvert par test_ml_predict.py).
+    db = SessionLocal()
+    try:
+        predict_at_risk_shipments(db)
+    finally:
+        db.close()
+
+    response = client.get("/api/predictions/at-risk?limit=5")
+    assert response.status_code == 200
+    assert response.json() == []  # aucune expédition en cours dans ce scénario

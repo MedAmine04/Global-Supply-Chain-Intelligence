@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class OverviewKPIs(BaseModel):
@@ -28,3 +28,15 @@ class RegionTransportBreakdown(BaseModel):
     total_shipments: int
     delayed_shipments: int
     delay_rate: float = Field(description="Pourcentage, 0-100")
+
+
+class AtRiskShipment(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
+    shipment_id: str
+    supplier_name: str
+    warehouse_name: str
+    transport_mode: str
+    probability: float = Field(description="Probabilité de retard, 0-1")
+    predicted_label: int
+    model_name: str

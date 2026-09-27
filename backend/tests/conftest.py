@@ -71,6 +71,50 @@ def clean_all_tables():
     yield
 
 
+def _select_no_columns(df):
+    """Fonction nommée au niveau MODULE (ni lambda, ni fonction imbriquée
+    dans une fixture) : joblib/pickle ne sait sérialiser que des objets
+    accessibles par leur nom qualifié depuis le module — nécessaire
+    puisque le pipeline factice de `dummy_model` est sauvegardé sur
+    disque comme le serait un vrai modèle."""
+    return df[[]]
+
+
+@pytest.fixture
+def dummy_model(tmp_path, monkeypatch):
+    """Un pipeline scikit-learn factice mais valide (respecte l'interface
+    predict/predict_proba attendue), prédisant toujours "pas de retard" —
+    suffisant pour tester le câblage du scoring ML sans entraîner un
+    vrai modèle à chaque test (trop lent, redondant avec test_ml_train.py)."""
+    import json
+
+    import joblib
+    import pandas as pd
+    from sklearn.dummy import DummyClassifier
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import FunctionTransformer
+
+    from app.ml.features import FEATURE_COLUMNS
+    from app.services import ml_predict
+
+    pipeline = Pipeline([
+        ("identity", FunctionTransformer(_select_no_columns)),
+        ("model", DummyClassifier(strategy="constant", constant=0)),
+    ])
+    dummy_X = pd.DataFrame({c: [0, 1] for c in FEATURE_COLUMNS})
+    pipeline.fit(dummy_X[[]], [0, 1])
+
+    model_path = tmp_path / "shipment_delay_model.joblib"
+    joblib.dump(pipeline, model_path)
+    (tmp_path / "model_metadata.json").write_text(
+        json.dumps({"model_name": "dummy_test_model"})
+    )
+
+    monkeypatch.setattr(ml_predict, "MODEL_PATH", model_path)
+    monkeypatch.setattr(ml_predict, "METADATA_PATH", tmp_path / "model_metadata.json")
+    return pipeline
+
+
 @pytest.fixture
 def full_supply_chain_scenario():
     """Un scénario minimal mais complet : 1 supplier, 1 product, 1

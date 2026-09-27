@@ -10,6 +10,10 @@ pandas==2.2.3
 Faker==30.3.0
 pyspark==3.5.3
 confluent-kafka==2.6.0
+scikit-learn==1.5.2
+xgboost==2.1.2
+mlflow==2.17.2
+joblib==1.5.3
 
 # Dev / tests
 pytest==8.3.3
