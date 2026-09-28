@@ -246,6 +246,26 @@ trois bugs rencontrés, et ce que ces chiffres valident (le pipeline
 retrouve un signal injecté) et ne valident pas (la performance sur des
 retards réels).
 
+## Phase 4 — NLP : incidents (classification, extraction, recherche)
+
+```bash
+cd backend
+python -m app.cli train-incident-classifier   # TF-IDF + LogReg vs baseline
+python -m app.cli enrich-incidents            # type prédit + durée, lieu, référence
+python -m app.cli search-incidents --query "storm snow"
+```
+
+Classifieur de type d'incident : accuracy 0.93 contre 0.18 pour le
+baseline, **mesurée sur du texte généré par gabarits** — elle valide le
+pipeline, pas la généralisation à de vrais rapports (ADR-010).
+
+**Limites assumées** : Hugging Face est inaccessible depuis
+l'environnement de développement, donc pas de transformers ni
+d'embeddings. La "recherche" est lexicale (TF-IDF), pas sémantique ; les
+embeddings et le sentiment ne sont pas implémentés. Les descriptions
+d'incidents du générateur étaient du texte aléatoire sans lien avec le
+type : corrigé avant l'entraînement (même piège que pour les retards).
+
 ## Documentation
 
 - Cahier des charges fonctionnel V1 : `docs/cahier-des-charges-v1.md`

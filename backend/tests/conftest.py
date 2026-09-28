@@ -66,6 +66,9 @@ def clean_all_tables():
     for model in SILVER_MODELS.values():
         db.query(model).delete()
     db.query(DataQualityReportModel).delete()
+    from app.models.incident_insights import IncidentInsight
+
+    db.query(IncidentInsight).delete()
     db.commit()
     db.close()
     yield

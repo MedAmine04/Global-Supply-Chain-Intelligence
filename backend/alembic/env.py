@@ -1,11 +1,19 @@
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+from alembic import context
 from app.core.config import get_settings
 from app.core.database import Base
-from app.models import bronze, data_quality, events, gold, predictions, silver  # noqa: F401
+from app.models import (  # noqa: F401
+    bronze,
+    data_quality,
+    events,
+    gold,
+    incident_insights,
+    predictions,
+    silver,
+)
 
 config = context.config
 settings = get_settings()

@@ -186,6 +186,56 @@ def cmd_predict_risk(args: argparse.Namespace) -> int:  # noqa: ARG001
         db.close()
 
 
+def cmd_train_incident_classifier(args: argparse.Namespace) -> int:  # noqa: ARG001
+    from app.nlp.classify import train_incident_classifier
+
+    db = SessionLocal()
+    try:
+        r = train_incident_classifier(db)
+        print(f"Baseline (classe majoritaire) : accuracy={r.baseline_accuracy}")
+        print(f"TF-IDF + LogReg               : accuracy={r.accuracy} macro_f1={r.macro_f1}")
+        print(f"(train={r.train_size}, test={r.test_size})\n")
+        for label, m in r.per_class.items():
+            print(
+                f"  {label:<15} precision={m['precision']:.2f} "
+                f"recall={m['recall']:.2f} support={int(m['support'])}"
+            )
+        return 0
+    finally:
+        db.close()
+
+
+def cmd_enrich_incidents(args: argparse.Namespace) -> int:  # noqa: ARG001
+    from app.nlp.enrich import ClassifierNotTrainedError, enrich_incidents
+
+    db = SessionLocal()
+    try:
+        try:
+            r = enrich_incidents(db)
+        except ClassifierNotTrainedError as exc:
+            print(f"Erreur: {exc}")
+            return 1
+        print(
+            f"{r.incidents_enriched} incident(s) enrichi(s) "
+            f"(durée trouvée: {r.with_duration}, lieu trouvé: {r.with_location})"
+        )
+        return 0
+    finally:
+        db.close()
+
+
+def cmd_search_incidents(args: argparse.Namespace) -> int:
+    from app.nlp.search import search_incidents
+
+    db = SessionLocal()
+    try:
+        for hit in search_incidents(db, args.query, limit=args.limit):
+            print(f"[{hit.score:.2f}] {hit.incident_id} ({hit.incident_type}) {hit.description}")
+        return 0
+    finally:
+        db.close()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="app.cli")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -263,6 +313,21 @@ def main() -> int:
         "predict-risk", help="Score les expéditions en cours avec le modèle entraîné (FR-13)"
     )
     p_predict.set_defaults(func=cmd_predict_risk)
+
+    p_tic = subparsers.add_parser(
+        "train-incident-classifier", help="Entraîne le classifieur de type d'incident (NLP)"
+    )
+    p_tic.set_defaults(func=cmd_train_incident_classifier)
+
+    p_enrich = subparsers.add_parser(
+        "enrich-incidents", help="Type prédit + entités extraites pour chaque incident"
+    )
+    p_enrich.set_defaults(func=cmd_enrich_incidents)
+
+    p_search = subparsers.add_parser("search-incidents", help="Recherche textuelle d'incidents")
+    p_search.add_argument("--query", required=True)
+    p_search.add_argument("--limit", type=int, default=5)
+    p_search.set_defaults(func=cmd_search_incidents)
 
     args = parser.parse_args()
     return args.func(args)

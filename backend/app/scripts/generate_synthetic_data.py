@@ -191,18 +191,79 @@ def generate_shipments(orders: list[dict], supplier_reliability: dict[str, float
     return rows
 
 
+
+# Gabarits de descriptions d'incidents liés au type (Phase 4 — NLP).
+# Sans lien texte <-> type, aucun classifieur ne pourrait rien apprendre
+# (même piège que pour le générateur de retards, cf. ADR-009). Les
+# vocabulaires se recouvrent volontairement entre types (ex. "customs"
+# apparaît en CUSTOMS_DELAY et en DOCUMENTATION) et ~10% des textes sont
+# génériques, pour que la tâche ne soit pas triviale.
+DURATION_WORDS = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 7: "seven"}
+INCIDENT_TEMPLATES = {
+    "CUSTOMS_DELAY": [
+        "Shipment {sid} was delayed for {dur} because customs clearance "
+        "took longer than expected in {city}.",
+        "{sid} held at customs in {city} for {dur} pending inspection.",
+        "Customs officers in {city} kept {sid} for {dur} for additional checks.",
+    ],
+    "DOCUMENTATION": [
+        "{sid} was held for {dur} in {city} because paperwork was missing.",
+        "Incorrect invoice forced {sid} to wait {dur} at the {city} border.",
+        "Missing customs documents delayed {sid} by {dur} in {city}.",
+    ],
+    "WEATHER": [
+        "A storm near {city} delayed {sid} for {dur}.",
+        "Heavy snow closed the route and {sid} waited {dur} in {city}.",
+        "Severe weather in {city} stopped {sid} for {dur}.",
+    ],
+    "MECHANICAL": [
+        "The truck carrying {sid} broke down near {city}, causing a delay of {dur}.",
+        "Engine failure left {sid} stranded in {city} for {dur}.",
+        "A vehicle breakdown in {city} delayed {sid} by {dur}.",
+    ],
+    "DAMAGE": [
+        "{sid} arrived in {city} with crushed packaging and damaged goods.",
+        "Goods in {sid} were damaged during handling in {city}; inspection took {dur}.",
+        "Water damage found on {sid} at the {city} warehouse.",
+    ],
+    "LOST": [
+        "{sid} could not be located after leaving {city}; search ongoing for {dur}.",
+        "Carrier lost track of {sid} near {city} for {dur}.",
+        "{sid} went missing in transit through {city}.",
+    ],
+}
+GENERIC_INCIDENT_TEXTS = [
+    "Issue reported by carrier for {sid}.",
+    "{sid} requires follow-up with the logistics team.",
+    "Incident logged for {sid}, details pending.",
+]
+
+
+def _incident_description(incident_type: str, shipment_id: str) -> str:
+    if random.random() < 0.10:
+        template = random.choice(GENERIC_INCIDENT_TEXTS)
+    else:
+        template = random.choice(INCIDENT_TEMPLATES[incident_type])
+    days = random.choice(list(DURATION_WORDS))
+    duration = f"{DURATION_WORDS[days]} day{'s' if days > 1 else ''}"
+    if random.random() < 0.3:  # parfois en chiffres : "3 days"
+        duration = f"{days} day{'s' if days > 1 else ''}"
+    return template.format(sid=shipment_id, dur=duration, city=fake.city())
+
+
 def generate_incidents(shipments: list[dict], rate: float) -> list[dict]:
     rows = []
     i = 0
     for shipment in shipments:
         if random.random() < rate:
             i += 1
+            incident_type = random.choice(INCIDENT_TYPES)
             rows.append(
                 {
                     "incident_id": f"INC-{i:06d}",
                     "shipment_id": shipment["shipment_id"],
-                    "incident_type": random.choice(INCIDENT_TYPES),
-                    "description": fake.sentence(nb_words=12),
+                    "incident_type": incident_type,
+                    "description": _incident_description(incident_type, shipment["shipment_id"]),
                     "incident_date": shipment["ship_date"],
                     "severity": random.choice(SEVERITIES),
                 }
