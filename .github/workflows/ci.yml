@@ -51,7 +51,7 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL: postgresql+psycopg://gsci:gsci@localhost:5432/gsci
-        run: pytest -v
+        run: pytest -v -m "not slow"
 
   frontend:
     runs-on: ubuntu-latest

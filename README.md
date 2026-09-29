@@ -266,6 +266,32 @@ embeddings et le sentiment ne sont pas implémentés. Les descriptions
 d'incidents du générateur étaient du texte aléatoire sans lien avec le
 type : corrigé avant l'entraînement (même piège que pour les retards).
 
+## Phase 5 — Computer Vision : détection de dommages sur colis
+
+```bash
+cd backend
+python -m app.cli train-damage-classifier         # ~3 min, 3000 images synthétiques
+python -m app.cli score-images --folder <dossier>  # images .jpg/.png, normal/damaged pour ré-entraîner
+```
+
+CNN maison (TensorFlow, sans transfer learning) sur des **images
+synthétiques générées avec OpenCV** — aucun dataset réel ni poids
+pré-entraîné n'est accessible depuis l'environnement de développement
+(`kaggle.com`, `zenodo.org`, `download.pytorch.org` → 403, ADR-011).
+
+**Pipeline instable, corrigé en trois temps documentés dans ADR-011** :
+surapprentissage (corrigé par augmentation légère), puis instabilité
+d'entraînement sans seed fixée (corrigée par seed + LR scheduler +
+early stopping), puis découverte que le modèle collapse de façon
+fiable en dessous d'~3000 images — pas un problème de nombre d'epochs.
+Résultat final : F1 ~0.80-0.87 sur un split 80/20 stratifié.
+
+**Non intégré au score de risque Gold** : les images synthétiques ne
+sont pas liées à un `shipment_id` réel du dataset — c'est un flux de
+scoring à part (`app/cv/dataset.py` permet de brancher de vraies photos
+via `--image-folder`), le lien avec une expédition précise nécessitera
+un vrai stockage de fichiers (Phase 6/7).
+
 ## Documentation
 
 - Cahier des charges fonctionnel V1 : `docs/cahier-des-charges-v1.md`

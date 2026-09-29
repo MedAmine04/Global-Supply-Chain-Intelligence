@@ -236,6 +236,35 @@ def cmd_search_incidents(args: argparse.Namespace) -> int:
         db.close()
 
 
+def cmd_train_damage_classifier(args: argparse.Namespace) -> int:
+    from app.cv.train import train_damage_classifier
+
+    folder = Path(args.image_folder) if args.image_folder else None
+    r = train_damage_classifier(n_samples=args.n_samples, epochs=args.epochs, image_folder=folder)
+    print(f"precision={r.precision} recall={r.recall} f1={r.f1}")
+    print(f"confusion_matrix={r.confusion_matrix}")
+    print(f"(train={r.train_size}, test={r.test_size})")
+    print(f"Modèle sauvegardé : {r.model_path}")
+    return 0
+
+
+def cmd_score_images(args: argparse.Namespace) -> int:
+    from app.cv.predict import DamageModelNotTrainedError, predict_damage_from_folder
+
+    try:
+        results = predict_damage_from_folder(Path(args.folder))
+    except DamageModelNotTrainedError as exc:
+        print(f"Erreur: {exc}")
+        return 1
+    if not results:
+        print(f"Aucune image trouvée dans {args.folder}")
+        return 1
+    for name, pred in sorted(results.items()):
+        label = "ENDOMMAGÉ" if pred.is_damaged else "normal"
+        print(f"{name:<30} probabilité={pred.probability:<7} [{label}]")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="app.cli")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -328,6 +357,20 @@ def main() -> int:
     p_search.add_argument("--query", required=True)
     p_search.add_argument("--limit", type=int, default=5)
     p_search.set_defaults(func=cmd_search_incidents)
+
+    p_cvtrain = subparsers.add_parser(
+        "train-damage-classifier", help="Entraîne le CNN de détection de dommages (Phase 5)"
+    )
+    p_cvtrain.add_argument("--n-samples", type=int, default=3000)
+    p_cvtrain.add_argument("--epochs", type=int, default=50)
+    p_cvtrain.add_argument(
+        "--image-folder", default=None, help="Photos réelles (normal/, damaged/)"
+    )
+    p_cvtrain.set_defaults(func=cmd_train_damage_classifier)
+
+    p_cvscore = subparsers.add_parser("score-images", help="Score un dossier d'images de colis")
+    p_cvscore.add_argument("--folder", required=True)
+    p_cvscore.set_defaults(func=cmd_score_images)
 
     args = parser.parse_args()
     return args.func(args)
