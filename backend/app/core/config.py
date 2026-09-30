@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     kafka_bootstrap_servers: str = "localhost:9092"
     kafka_shipment_status_topic: str = "shipment_status_updated"
 
+    anthropic_api_key: str | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
-from app.routers import analytics, health
+from app.routers import analytics, copilot, health
 
 settings = get_settings()
 
@@ -22,6 +22,7 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(analytics.router)
+app.include_router(copilot.router)
 
 
 @app.get("/")

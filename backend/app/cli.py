@@ -265,6 +265,26 @@ def cmd_score_images(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_ask_copilot(args: argparse.Namespace) -> int:
+    from app.copilot.agent import MissingApiKeyError, ask_copilot
+
+    db = SessionLocal()
+    try:
+        try:
+            response = ask_copilot(db, args.question)
+        except MissingApiKeyError as exc:
+            print(f"Erreur: {exc}")
+            return 1
+        print(response.answer)
+        if response.tool_calls:
+            print("\n--- Outils appelés ---")
+            for call in response.tool_calls:
+                print(f"  {call['tool']}({call['input']})")
+        return 0
+    finally:
+        db.close()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="app.cli")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -371,6 +391,12 @@ def main() -> int:
     p_cvscore = subparsers.add_parser("score-images", help="Score un dossier d'images de colis")
     p_cvscore.add_argument("--folder", required=True)
     p_cvscore.set_defaults(func=cmd_score_images)
+
+    p_ask = subparsers.add_parser(
+        "ask-copilot", help="Pose une question au Copilot IA (Phase 6, requiert ANTHROPIC_API_KEY)"
+    )
+    p_ask.add_argument("question")
+    p_ask.set_defaults(func=cmd_ask_copilot)
 
     args = parser.parse_args()
     return args.func(args)

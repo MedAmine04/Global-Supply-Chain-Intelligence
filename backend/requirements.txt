@@ -18,6 +18,7 @@ joblib==1.5.3
 tensorflow-cpu==2.16.2
 opencv-python-headless==4.10.0.84
 spacy==3.7.5
+anthropic==0.39.0
 en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
 
 # Dev / tests

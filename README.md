@@ -292,6 +292,30 @@ scoring à part (`app/cv/dataset.py` permet de brancher de vraies photos
 via `--image-folder`), le lien avec une expédition précise nécessitera
 un vrai stockage de fichiers (Phase 6/7).
 
+## Phase 6 — AI Copilot
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...   # requis, non configuré dans cet environnement de dev
+python -m app.cli ask-copilot "Quels fournisseurs ont le plus de retards ?"
+# ou : POST /api/copilot/ask {"question": "..."}
+```
+
+4 outils (KPI, performance fournisseurs, expéditions à risque,
+recherche d'incidents) appelant directement les services déjà testés —
+le modèle ne voit jamais la base de données ni ne génère de SQL,
+il ne peut agir qu'au travers de ces outils. Chaque réponse inclut
+les données réellement utilisées (`tool_calls`), affichées en repli
+dans le dashboard.
+
+**Non vérifié en direct dans cet environnement** : ni Gemini
+(`generativelanguage.googleapis.com` bloqué par le pare-feu du sandbox,
+vérifié) ni Anthropic (pas de clé disponible ici) n'ont pu être appelés
+réellement. Ce qui est testé : la couche `dispatch_tool_call` (7 tests,
+contre les vraies données) et le comportement d'erreur sans clé — voir
+ADR-012 pour le détail, y compris un incident de sécurité mineur
+(clé API partagée dans le chat, jamais persistée, révocation
+recommandée).
+
 ## Documentation
 
 - Cahier des charges fonctionnel V1 : `docs/cahier-des-charges-v1.md`
