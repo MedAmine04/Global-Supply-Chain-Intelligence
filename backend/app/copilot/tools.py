@@ -45,6 +45,22 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "search_documents",
+        "description": (
+            "Recherche dans les documents internes (contrats fournisseurs, "
+            "politique de transport, politique qualité des données) pour "
+            "répondre à une question contractuelle ou de politique interne."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Question ou termes de recherche"},
+                "limit": {"type": "integer", "description": "Nombre de passages (défaut 3)"},
+            },
+            "required": ["query"],
+        },
+    },
+    {
         "name": "search_incidents",
         "description": "Recherche textuelle dans les descriptions d'incidents logistiques.",
         "input_schema": {
@@ -91,6 +107,12 @@ def dispatch_tool_call(db: Session, tool_name: str, tool_input: dict) -> Any:
         from app.nlp.search import search_incidents
 
         hits = search_incidents(db, tool_input["query"], limit=tool_input.get("limit", 5))
+        return [asdict(h) for h in hits]
+
+    if tool_name == "search_documents":
+        from app.rag.retrieval import retrieve_relevant_chunks
+
+        hits = retrieve_relevant_chunks(tool_input["query"], limit=tool_input.get("limit", 3))
         return [asdict(h) for h in hits]
 
     raise UnknownToolError(f"Outil inconnu : '{tool_name}'")

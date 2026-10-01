@@ -22,7 +22,7 @@ def test_tool_schemas_are_well_formed():
     names = {t["name"] for t in TOOL_SCHEMAS}
     assert names == {
         "get_overview_kpis", "get_supplier_performance",
-        "get_at_risk_shipments", "search_incidents",
+        "get_at_risk_shipments", "search_incidents", "search_documents",
     }
     for tool in TOOL_SCHEMAS:
         assert "description" in tool and tool["description"]
@@ -76,6 +76,18 @@ def test_dispatch_search_incidents_uses_query():
     try:
         result = dispatch_tool_call(db, "search_incidents", {"query": "storm", "limit": 3})
         assert isinstance(result, list)
+    finally:
+        db.close()
+
+
+def test_dispatch_search_documents_returns_relevant_section():
+    db = SessionLocal()
+    try:
+        result = dispatch_tool_call(
+            db, "search_documents", {"query": "late delivery penalty", "limit": 2}
+        )
+        assert result
+        assert "Penalties" in result[0]["section"]
     finally:
         db.close()
 

@@ -33,7 +33,7 @@ export default function CopilotSection() {
           type="text"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Ask about your supply chain..."
+          placeholder="Ask about your supply chain, contracts, or policies..."
           style={{ flex: 1, padding: "0.5rem" }}
         />
         <button type="submit" disabled={loading}>

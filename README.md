@@ -316,6 +316,16 @@ ADR-012 pour le détail, y compris un incident de sécurité mineur
 (clé API partagée dans le chat, jamais persistée, révocation
 recommandée).
 
+## Phase 7 — RAG : documents internes
+
+Corpus synthétique (`backend/docs_corpus/`, 3 documents : contrat
+fournisseur, politique de transport, politique qualité des données),
+récupération lexicale TF-IDF (mêmes limites que la recherche
+d'incidents, ADR-010), exposée au Copilot via l'outil `search_documents`
+avec citation de la section source. Un vrai bug de récupération trouvé
+et corrigé pendant le développement (titres de section non indexés,
+faussant le classement) — voir ADR-013.
+
 ## Documentation
 
 - Cahier des charges fonctionnel V1 : `docs/cahier-des-charges-v1.md`
