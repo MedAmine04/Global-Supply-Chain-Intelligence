@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
+from app.core.metrics import metrics_endpoint, metrics_middleware
 from app.routers import analytics, copilot, health
 
 settings = get_settings()
@@ -23,6 +24,9 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(analytics.router)
 app.include_router(copilot.router)
+
+app.middleware("http")(metrics_middleware)
+app.add_api_route("/metrics", metrics_endpoint, methods=["GET"], include_in_schema=False)
 
 
 @app.get("/")

@@ -1,0 +1,25 @@
+{
+  "title": "GSCI API",
+  "panels": [
+    {
+      "title": "Requests per second",
+      "type": "timeseries",
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+      "targets": [{"expr": "sum(rate(gsci_http_requests_total[1m])) by (path)"}]
+    },
+    {
+      "title": "p95 latency (s)",
+      "type": "timeseries",
+      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(gsci_http_request_duration_seconds_bucket[5m])) by (le, path))"}]
+    },
+    {
+      "title": "Error rate (5xx)",
+      "type": "timeseries",
+      "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+      "targets": [{"expr": "sum(rate(gsci_http_requests_total{status=~\"5..\"}[5m]))"}]
+    }
+  ],
+  "schemaVersion": 39,
+  "time": {"from": "now-1h", "to": "now"}
+}

@@ -53,6 +53,9 @@ jobs:
           DATABASE_URL: postgresql+psycopg://gsci:gsci@localhost:5432/gsci
         run: pytest -v -m "not slow"
 
+      - name: Dependency vulnerability scan (informatif, cf. ADR-014)
+        run: pip-audit -r requirements.txt || true
+
   frontend:
     runs-on: ubuntu-latest
     defaults:

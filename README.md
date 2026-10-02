@@ -326,6 +326,34 @@ avec citation de la section source. Un vrai bug de récupération trouvé
 et corrigé pendant le développement (titres de section non indexés,
 faussant le classement) — voir ADR-013.
 
+## Phase 8 — Production : observabilité, sécurité, infrastructure
+
+```bash
+curl http://localhost:8000/metrics   # métriques Prometheus (compteurs, latence)
+cd backend && pip-audit -r requirements.txt
+```
+
+**Observabilité vérifiée en direct** : middleware Prometheus testé
+contre un vrai serveur (requêtes réelles, format de métriques confirmé)
++ test automatisé. Services `prometheus`/`grafana` dans
+`docker-compose.yml` (dashboard provisionné automatiquement), non
+démarrés ici faute de Docker.
+
+**Audit de sécurité réel, pas un scan ignoré** : 86 vulnérabilités
+trouvées par `pip-audit`, analysées une par une. `starlette` mis à jour
+(0.38.6 → 0.48.0, plafond vérifié même avec la dernière version de
+FastAPI) ; les 6 restantes confirmées non exploitables par `grep` sur
+le code réel (aucun `FileResponse`, `StaticFiles`, `HTTPEndpoint`, ni
+formulaire dans ce projet). Les 63 vulnérabilités `mlflow` concernent
+exclusivement `mlflow server`, jamais démarré ici (tracking local par
+fichiers uniquement) — non corrigées, exposition nulle justifiée et
+documentée, pas ignorée. Détail complet dans ADR-014.
+
+Conteneurs Docker en utilisateur non-root (`USER app`/`USER node`),
+non vérifié par un build réel (pas de Docker ici). Infrastructure Azure
+en Terraform (`infra/terraform/`), écrite mais non appliquée (ni
+Terraform ni accès Azure disponibles ici, vérifié).
+
 ## Documentation
 
 - Cahier des charges fonctionnel V1 : `docs/cahier-des-charges-v1.md`
