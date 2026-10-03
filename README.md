@@ -5,19 +5,32 @@
 > prédiction des risques de retard, analyse d'incidents et de documents,
 > interface décisionnelle assistée par IA.
 
-**Statut : Phase 1 — Data Engineering (`v0.2.0`) — FR-01 à FR-09 terminés (pipeline complet + dashboard)**
+**Statut : `v1.0.0` — Phases 0 à 8 terminées** (Foundation, Data Engineering,
+Big Data, Machine Learning, NLP, Computer Vision, AI Copilot, RAG,
+Production). Voir `docs/planning-semestre.md` pour le détail phase par
+phase et `docs/adr/` pour les décisions d'architecture (14 ADR).
 
-## Stack (Phase 0 + 1)
+## Stack
 
 - Backend : FastAPI + PostgreSQL + SQLAlchemy + Alembic
 - Frontend : React (Vite)
 - Conteneurisation : Docker / Docker Compose
-- CI : GitHub Actions (lint, migrations, tests, build)
-- Data Engineering : génération de dataset synthétique + ingestion Bronze (CLI)
+- CI : GitHub Actions (lint, migrations, tests, build, audit de dépendances)
+- Data Engineering : génération de dataset synthétique + pipeline Bronze/Silver/Gold (CLI)
+- Big Data : Spark (PySpark), Kafka, Airflow
+- Machine Learning : scikit-learn/XGBoost + MLflow (tracking local)
+- NLP : classification TF-IDF + NER hybride (regex/règles/spaCy) + recherche lexicale
+- Computer Vision : CNN (TensorFlow-CPU) sur images synthétiques
+- AI Copilot : Anthropic (tool-use, outils whitelistés)
+- RAG : retrieval lexical TF-IDF sur corpus de documents internes
+- Observabilité : Prometheus + Grafana ; sécurité : pip-audit, conteneurs non-root
 
-Le reste de la stack cible (Spark, Kafka, Airflow, MLflow, pgvector,
-Terraform, Azure...) est introduit progressivement, phase par phase.
-Voir `docs/planning-semestre.md` pour le détail.
+Certains choix (TensorFlow-CPU plutôt que PyTorch, TF-IDF plutôt que des
+embeddings, données synthétiques plutôt que des datasets externes,
+Anthropic plutôt que Gemini) sont des substitutions documentées,
+imposées par les contraintes réseau/matériel de l'environnement de
+développement — voir les ADR correspondants pour la justification et ce
+qui a été vérifié en conditions réelles.
 
 ## Démarrage local
 
